@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Дневник мыслей</title>
-    <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -26,6 +25,15 @@
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+        .safety-message {
+            background: var(--tg-theme-secondary-bg-color, #fef3c7);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            font-size: 0.8rem;
+            color: var(--tg-theme-hint-color, #92400e);
+            border: 1px solid var(--tg-theme-hint-color, #fcd34d);
         }
         .form-card {
             background: var(--tg-theme-secondary-bg-color, white);
@@ -66,10 +74,11 @@
             display: flex;
             gap: 10px;
             margin-top: 12px;
+            flex-wrap: wrap;
         }
         button {
-            flex: 1;
-            padding: 14px 16px;
+            flex: 1 1 auto;
+            padding: 14px 12px;
             border: none;
             border-radius: 12px;
             font-size: 16px;
@@ -79,12 +88,20 @@
             color: var(--tg-theme-button-text-color, white);
             transition: opacity 0.2s, transform 0.1s;
             min-height: 48px;
+            white-space: nowrap;
         }
         button:active { opacity: 0.8; transform: scale(0.98); }
         button.clear-btn {
             background: transparent;
             color: #ef4444;
             border: 1px solid #ef4444;
+        }
+        button.export-btn {
+            background: var(--tg-theme-secondary-bg-color, #e5e7eb);
+            color: var(--tg-theme-text-color, #1f2937);
+            border: 1px solid var(--tg-theme-text-color, #9ca3af);
+            font-size: 0.85rem;
+            padding: 10px;
         }
         .entry {
             background: var(--tg-theme-secondary-bg-color, white);
@@ -94,11 +111,32 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         .entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .entry-date {
             font-size: 0.8rem;
             color: var(--tg-theme-hint-color, #6b7280);
-            margin-bottom: 10px;
             font-weight: 500;
         }
+        .entry-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .entry-actions button {
+            background: transparent;
+            border: 1px solid var(--tg-theme-hint-color, #9ca3af);
+            color: var(--tg-theme-hint-color, #6b7280);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            min-height: auto;
+            flex: 0 0 auto;
+        }
+        .entry-actions button:active { opacity: 0.7; }
         .entry-row {
             display: flex;
             margin-bottom: 6px;
@@ -126,9 +164,11 @@
 </head>
 <body>
     <h1>📓 Дневник мыслей</h1>
-    <p style="color: var(--tg-theme-hint-color, #6b7280); margin-bottom:16px; font-size:0.9rem;">
-        Записывайте ситуации, мысли, эмоции, ощущения и поведение.
-    </p>
+    
+    <div class="safety-message">
+        ⚠️ <strong>Не потеряйте записи!</strong> При очистке кеша Telegram данные исчезнут. 
+        Периодически нажимайте «Сохранить» для скачивания CSV.
+    </div>
 
     <div class="form-card">
         <div class="field">
@@ -153,33 +193,49 @@
         </div>
 
         <div class="button-group">
-            <button onclick="saveEntry()">Сохранить запись</button>
-            <button class="clear-btn" onclick="clearAll()">Очистить всё</button>
+            <button id="saveButton" onclick="saveEntry()">💾 Сохранить запись</button>
+            <button class="clear-btn" onclick="clearAll()">🗑 Очистить всё</button>
+        </div>
+        <div class="button-group" style="margin-top: 8px;">
+            <button class="export-btn" onclick="exportToCSV()">📄 Сохранить (CSV)</button>
         </div>
     </div>
 
     <div id="entriesContainer"></div>
 
     <script>
-        // ===== Инициализация Telegram Mini App =====
-        const tg = window.Telegram.WebApp;
-        tg.ready();                     // Сообщаем Telegram, что приложение готово
-        tg.expand();                   // Раскрываем на весь экран
-        // При желании можно настроить цвет верхней панели:
-        // tg.setHeaderColor('secondary_bg_color');
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
 
-        // ===== Логика дневника (та же, что и раньше) =====
         const STORAGE_KEY = 'diary_extended';
+        let editIndex = -1; // -1 означает новую запись
+
+        // Универсальный диалог подтверждения
+        function confirmDialog(message, callback) {
+            if (tg && tg.showConfirm) {
+                tg.showConfirm(message, (confirmed) => callback(confirmed));
+            } else {
+                const result = confirm(message);
+                callback(result);
+            }
+        }
+
         function getEntries() {
             const raw = localStorage.getItem(STORAGE_KEY);
             return raw ? JSON.parse(raw) : [];
         }
+
         function saveEntries(entries) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
         }
+
         function escapeHtml(text) {
             return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
+
         function renderEntries() {
             const container = document.getElementById('entriesContainer');
             const entries = getEntries();
@@ -187,15 +243,22 @@
                 container.innerHTML = '<div class="no-entries">Пока нет записей.</div>';
                 return;
             }
-            container.innerHTML = entries.slice().reverse().map(entry => {
+            container.innerHTML = entries.slice().reverse().map((entry, reversedIndex) => {
+                const originalIndex = entries.length - 1 - reversedIndex; // оригинальный индекс в массиве
                 const d = new Date(entry.timestamp);
                 const dateStr = d.toLocaleString('ru-RU', {
                     day: 'numeric', month: 'long', year: 'numeric',
                     hour: '2-digit', minute: '2-digit'
                 });
                 return `
-                    <div class="entry">
-                        <div class="entry-header">${dateStr}</div>
+                    <div class="entry" data-index="${originalIndex}">
+                        <div class="entry-header">
+                            <span class="entry-date">${dateStr}</span>
+                            <div class="entry-actions">
+                                <button onclick="editEntry(${originalIndex})">✏️ Ред.</button>
+                                <button onclick="deleteEntry(${originalIndex})">🗑 Удалить</button>
+                            </div>
+                        </div>
                         <div class="entry-row"><span class="entry-label">Ситуация:</span><span class="entry-value">${escapeHtml(entry.situation)}</span></div>
                         <div class="entry-row"><span class="entry-label">Автоматическая мысль:</span><span class="entry-value">${escapeHtml(entry.thought)}</span></div>
                         <div class="entry-row"><span class="entry-label">Эмоции:</span><span class="entry-value">${escapeHtml(entry.emotions)}</span></div>
@@ -205,34 +268,158 @@
                 `;
             }).join('');
         }
+
+        function fillForm(entry) {
+            document.getElementById('situation').value = entry.situation || '';
+            document.getElementById('thought').value = entry.thought || '';
+            document.getElementById('emotions').value = entry.emotions || '';
+            document.getElementById('sensations').value = entry.sensations || '';
+            document.getElementById('behavior').value = entry.behavior || '';
+        }
+
+        function clearForm() {
+            document.getElementById('situation').value = '';
+            document.getElementById('thought').value = '';
+            document.getElementById('emotions').value = '';
+            document.getElementById('sensations').value = '';
+            document.getElementById('behavior').value = '';
+        }
+
+        function setEditMode(isEditing) {
+            const btn = document.getElementById('saveButton');
+            if (isEditing) {
+                btn.textContent = '✏️ Обновить запись';
+                btn.style.background = '#f59e0b';
+            } else {
+                btn.textContent = '💾 Сохранить запись';
+                btn.style.background = 'var(--tg-theme-button-color, #2563eb)';
+            }
+        }
+
         function saveEntry() {
             const situation = document.getElementById('situation').value.trim();
             const thought = document.getElementById('thought').value.trim();
             const emotions = document.getElementById('emotions').value.trim();
             const sensations = document.getElementById('sensations').value.trim();
             const behavior = document.getElementById('behavior').value.trim();
+
             if (!situation && !thought && !emotions && !sensations && !behavior) {
-                tg.showAlert('Заполните хотя бы одно поле перед сохранением.');  // Используем нативное окошко Telegram
+                alert('Заполните хотя бы одно поле перед сохранением.');
                 return;
             }
+
             const entries = getEntries();
-            entries.push({ situation, thought, emotions, sensations, behavior, timestamp: Date.now() });
+
+            if (editIndex >= 0) {
+                // Редактирование существующей записи
+                entries[editIndex] = {
+                    ...entries[editIndex],
+                    situation,
+                    thought,
+                    emotions,
+                    sensations,
+                    behavior
+                };
+                editIndex = -1;
+                setEditMode(false);
+            } else {
+                // Новая запись
+                entries.push({
+                    situation,
+                    thought,
+                    emotions,
+                    sensations,
+                    behavior,
+                    timestamp: Date.now()
+                });
+            }
+
             saveEntries(entries);
-            document.getElementById('situation').value = '';
-            document.getElementById('thought').value = '';
-            document.getElementById('emotions').value = '';
-            document.getElementById('sensations').value = '';
-            document.getElementById('behavior').value = '';
+            clearForm();
             renderEntries();
         }
-        function clearAll() {
-            tg.showConfirm('Удалить все записи безвозвратно?', (confirmed) => {
-                if (confirmed) {
-                    localStorage.removeItem(STORAGE_KEY);
+
+        function editEntry(index) {
+            const entries = getEntries();
+            if (index >= 0 && index < entries.length) {
+                const entry = entries[index];
+                fillForm(entry);
+                editIndex = index;
+                setEditMode(true);
+                window.scrollTo(0, 0);
+            }
+        }
+
+        function deleteEntry(index) {
+            confirmDialog('Удалить эту запись?', (confirmed) => {
+                if (!confirmed) return;
+                const entries = getEntries();
+                if (index >= 0 && index < entries.length) {
+                    entries.splice(index, 1);
+                    saveEntries(entries);
+                    if (editIndex === index) {
+                        editIndex = -1;
+                        setEditMode(false);
+                        clearForm();
+                    }
                     renderEntries();
                 }
             });
         }
+
+        function clearAll() {
+            confirmDialog('Удалить все записи безвозвратно? Сначала сохраните CSV!', (confirmed) => {
+                if (!confirmed) return;
+                localStorage.removeItem(STORAGE_KEY);
+                editIndex = -1;
+                setEditMode(false);
+                clearForm();
+                renderEntries();
+            });
+        }
+
+        function exportToCSV() {
+            const entries = getEntries();
+            if (entries.length === 0) {
+                alert('Нет записей для экспорта.');
+                return;
+            }
+
+            // Формируем CSV
+            const headers = ['Дата', 'Ситуация', 'Автоматическая мысль', 'Эмоции', 'Телесные ощущения', 'Поведение'];
+            const rows = entries.map(entry => {
+                const date = new Date(entry.timestamp).toLocaleString('ru-RU');
+                return [date, entry.situation, entry.thought, entry.emotions, entry.sensations, entry.behavior];
+            });
+
+            // Экранирование: оборачиваем в кавычки поля с запятой, кавычками или переводом строки
+            const escapeCSV = (str) => {
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                    return `"${str.replace(/"/g, '""')}"`;
+                }
+                return str;
+            };
+
+            const csvContent = [headers, ...rows]
+                .map(row => row.map(escapeCSV).join(','))
+                .join('\n');
+
+            // Добавим BOM для корректного открытия в Excel на Windows
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `дневник_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert('CSV-файл сохранён.');
+        }
+
+        // Первоначальный рендер
         renderEntries();
     </script>
 </body>
