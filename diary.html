@@ -7,10 +7,41 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* Переменные для светлой темы (по умолчанию) */
+        body {
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #111827;
+            --hint: #4b5563;
+            --border: #d1d5db;
+            --warning-bg: #fef3c7;
+            --warning-text: #92400e;
+            --warning-border: #fcd34d;
+            --button-bg: #2563eb;
+            --button-text: white;
+            --entry-label: #374151;
+        }
+
+        /* Тёмная тема */
+        body.dark-theme {
+            --bg: #1f2937;
+            --card-bg: #374151;
+            --text: #f9fafb;
+            --hint: #9ca3af;
+            --border: #4b5563;
+            --warning-bg: #78350f;
+            --warning-text: #fde68a;
+            --warning-border: #92400e;
+            --button-bg: #3b82f6;
+            --button-text: white;
+            --entry-label: #d1d5db;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--tg-theme-bg-color, #f3f4f6);
-            color: var(--tg-theme-text-color, #111827);
+            background: var(--bg);
+            color: var(--text);
             padding: 16px;
             padding-top: calc(16px + env(safe-area-inset-top));
             padding-bottom: calc(16px + env(safe-area-inset-bottom));
@@ -19,57 +50,80 @@
             -webkit-text-size-adjust: 100%;
             transition: background 0.3s, color 0.3s;
         }
+
+        /* Заголовок и переключатель темы */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
         h1 {
             font-size: 1.6rem;
-            margin-bottom: 12px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
+        #themeToggle {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 1.2rem;
+            padding: 8px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+            min-height: auto;
+            flex: 0 0 auto;
+        }
+
         .safety-message {
-            background: var(--tg-theme-secondary-bg-color, #fef3c7);
+            background: var(--warning-bg);
             border-radius: 10px;
             padding: 10px 12px;
             margin-bottom: 16px;
             font-size: 0.8rem;
-            color: var(--tg-theme-hint-color, #92400e);
-            border: 1px solid var(--tg-theme-hint-color, #fcd34d);
+            color: var(--warning-text);
+            border: 1px solid var(--warning-border);
         }
         .form-card {
-            background: var(--tg-theme-secondary-bg-color, white);
+            background: var(--card-bg);
             border-radius: 16px;
             padding: 16px;
             margin-bottom: 20px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
         }
         .field { margin-bottom: 12px; }
         label {
             display: block;
             font-size: 0.85rem;
             font-weight: 600;
-            color: var(--tg-theme-hint-color, #4b5563);
+            color: var(--hint);
             margin-bottom: 4px;
         }
+
+        /* Поля ввода: всегда чёрный текст на белом фоне */
         textarea {
             width: 100%;
             padding: 10px 12px;
             font-size: 16px;
             font-family: inherit;
-            border: 1px solid #d1d5db;
+            border: 1px solid var(--border);
             border-radius: 12px;
-            background: var(--tg-theme-bg-color, #f9fafb);
-            color: var(--tg-theme-text-color, #111827);
+            background: #ffffff;
+            color: #000000;
             resize: vertical;
             min-height: 52px;
             line-height: 1.4;
-            transition: border-color 0.2s, background 0.2s;
+            transition: border-color 0.2s;
         }
         textarea:focus {
             outline: none;
-            border-color: var(--tg-theme-button-color, #2563eb);
-            background: white;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+            border-color: var(--button-bg);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+            background: #ffffff;
         }
+
         .button-group {
             display: flex;
             gap: 10px;
@@ -84,8 +138,8 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            background: var(--tg-theme-button-color, #2563eb);
-            color: var(--tg-theme-button-text-color, white);
+            background: var(--button-bg);
+            color: var(--button-text);
             transition: opacity 0.2s, transform 0.1s;
             min-height: 48px;
             white-space: nowrap;
@@ -97,18 +151,18 @@
             border: 1px solid #ef4444;
         }
         button.export-btn {
-            background: var(--tg-theme-secondary-bg-color, #e5e7eb);
-            color: var(--tg-theme-text-color, #1f2937);
-            border: 1px solid var(--tg-theme-text-color, #9ca3af);
+            background: var(--card-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
             font-size: 0.85rem;
             padding: 10px;
         }
         .entry {
-            background: var(--tg-theme-secondary-bg-color, white);
+            background: var(--card-bg);
             border-radius: 16px;
             padding: 14px;
             margin-bottom: 14px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .entry-header {
             display: flex;
@@ -118,7 +172,7 @@
         }
         .entry-date {
             font-size: 0.8rem;
-            color: var(--tg-theme-hint-color, #6b7280);
+            color: var(--hint);
             font-weight: 500;
         }
         .entry-actions {
@@ -127,8 +181,8 @@
         }
         .entry-actions button {
             background: transparent;
-            border: 1px solid var(--tg-theme-hint-color, #9ca3af);
-            color: var(--tg-theme-hint-color, #6b7280);
+            border: 1px solid var(--hint);
+            color: var(--hint);
             padding: 6px 10px;
             border-radius: 8px;
             font-size: 0.8rem;
@@ -147,15 +201,15 @@
             width: 110px;
             flex-shrink: 0;
             font-weight: 600;
-            color: var(--tg-theme-text-color, #374151);
+            color: var(--entry-label);
         }
         .entry-value {
-            color: var(--tg-theme-text-color, #1f2937);
+            color: var(--text);
             white-space: pre-wrap;
             word-break: break-word;
         }
         .no-entries {
-            color: var(--tg-theme-hint-color, #9ca3af);
+            color: var(--hint);
             text-align: center;
             margin-top: 30px;
             font-size: 0.95rem;
@@ -163,7 +217,10 @@
     </style>
 </head>
 <body>
-    <h1>📓 Дневник мыслей</h1>
+    <div class="header">
+        <h1>📓 Дневник мыслей</h1>
+        <button id="themeToggle" onclick="toggleTheme()">🌓</button>
+    </div>
     
     <div class="safety-message">
         ⚠️ <strong>Не потеряйте записи!</strong> При очистке кеша Telegram данные исчезнут. 
@@ -211,9 +268,39 @@
         }
 
         const STORAGE_KEY = 'diary_extended';
-        let editIndex = -1; // -1 означает новую запись
+        const THEME_KEY = 'diary_theme';
+        let editIndex = -1;
 
-        // Универсальный диалог подтверждения
+        // ===== Управление темой =====
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.body.classList.add('dark-theme');
+                document.getElementById('themeToggle').textContent = '☀️';
+            } else {
+                document.body.classList.remove('dark-theme');
+                document.getElementById('themeToggle').textContent = '🌙';
+            }
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem(THEME_KEY);
+            if (savedTheme) {
+                applyTheme(savedTheme);
+            } else if (tg && tg.colorScheme === 'dark') {
+                applyTheme('dark');
+            } else {
+                applyTheme('light');
+            }
+        }
+
+        function toggleTheme() {
+            const isDark = document.body.classList.contains('dark-theme');
+            const newTheme = isDark ? 'light' : 'dark';
+            localStorage.setItem(THEME_KEY, newTheme);
+            applyTheme(newTheme);
+        }
+
+        // ===== Универсальный диалог =====
         function confirmDialog(message, callback) {
             if (tg && tg.showConfirm) {
                 tg.showConfirm(message, (confirmed) => callback(confirmed));
@@ -223,15 +310,14 @@
             }
         }
 
+        // ===== Работа с данными =====
         function getEntries() {
             const raw = localStorage.getItem(STORAGE_KEY);
             return raw ? JSON.parse(raw) : [];
         }
-
         function saveEntries(entries) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
         }
-
         function escapeHtml(text) {
             return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
@@ -244,7 +330,7 @@
                 return;
             }
             container.innerHTML = entries.slice().reverse().map((entry, reversedIndex) => {
-                const originalIndex = entries.length - 1 - reversedIndex; // оригинальный индекс в массиве
+                const originalIndex = entries.length - 1 - reversedIndex;
                 const d = new Date(entry.timestamp);
                 const dateStr = d.toLocaleString('ru-RU', {
                     day: 'numeric', month: 'long', year: 'numeric',
@@ -276,7 +362,6 @@
             document.getElementById('sensations').value = entry.sensations || '';
             document.getElementById('behavior').value = entry.behavior || '';
         }
-
         function clearForm() {
             document.getElementById('situation').value = '';
             document.getElementById('thought').value = '';
@@ -284,7 +369,6 @@
             document.getElementById('sensations').value = '';
             document.getElementById('behavior').value = '';
         }
-
         function setEditMode(isEditing) {
             const btn = document.getElementById('saveButton');
             if (isEditing) {
@@ -292,7 +376,7 @@
                 btn.style.background = '#f59e0b';
             } else {
                 btn.textContent = '💾 Сохранить запись';
-                btn.style.background = 'var(--tg-theme-button-color, #2563eb)';
+                btn.style.background = 'var(--button-bg)';
             }
         }
 
@@ -307,33 +391,14 @@
                 alert('Заполните хотя бы одно поле перед сохранением.');
                 return;
             }
-
             const entries = getEntries();
-
             if (editIndex >= 0) {
-                // Редактирование существующей записи
-                entries[editIndex] = {
-                    ...entries[editIndex],
-                    situation,
-                    thought,
-                    emotions,
-                    sensations,
-                    behavior
-                };
+                entries[editIndex] = { ...entries[editIndex], situation, thought, emotions, sensations, behavior };
                 editIndex = -1;
                 setEditMode(false);
             } else {
-                // Новая запись
-                entries.push({
-                    situation,
-                    thought,
-                    emotions,
-                    sensations,
-                    behavior,
-                    timestamp: Date.now()
-                });
+                entries.push({ situation, thought, emotions, sensations, behavior, timestamp: Date.now() });
             }
-
             saveEntries(entries);
             clearForm();
             renderEntries();
@@ -342,8 +407,7 @@
         function editEntry(index) {
             const entries = getEntries();
             if (index >= 0 && index < entries.length) {
-                const entry = entries[index];
-                fillForm(entry);
+                fillForm(entries[index]);
                 editIndex = index;
                 setEditMode(true);
                 window.scrollTo(0, 0);
@@ -384,27 +448,18 @@
                 alert('Нет записей для экспорта.');
                 return;
             }
-
-            // Формируем CSV
             const headers = ['Дата', 'Ситуация', 'Автоматическая мысль', 'Эмоции', 'Телесные ощущения', 'Поведение'];
             const rows = entries.map(entry => {
                 const date = new Date(entry.timestamp).toLocaleString('ru-RU');
                 return [date, entry.situation, entry.thought, entry.emotions, entry.sensations, entry.behavior];
             });
-
-            // Экранирование: оборачиваем в кавычки поля с запятой, кавычками или переводом строки
             const escapeCSV = (str) => {
                 if (str.includes(',') || str.includes('"') || str.includes('\n')) {
                     return `"${str.replace(/"/g, '""')}"`;
                 }
                 return str;
             };
-
-            const csvContent = [headers, ...rows]
-                .map(row => row.map(escapeCSV).join(','))
-                .join('\n');
-
-            // Добавим BOM для корректного открытия в Excel на Windows
+            const csvContent = [headers, ...rows].map(row => row.map(escapeCSV).join(',')).join('\n');
             const bom = '\uFEFF';
             const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8' });
             const url = URL.createObjectURL(blob);
@@ -415,11 +470,11 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-
             alert('CSV-файл сохранён.');
         }
 
-        // Первоначальный рендер
+        // Загрузка темы и первого рендера
+        loadTheme();
         renderEntries();
     </script>
 </body>
